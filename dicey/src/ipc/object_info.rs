@@ -85,7 +85,7 @@ pub struct Property {
 
 #[derive(Clone, Debug)]
 pub struct Signal {
-    signature: String,
+    pub signature: String,
 }
 
 pub type Traits = HashMap<String, Elements>;

@@ -1,28 +1,92 @@
 // Copyright (c) 2014-2024 Zuru Tech HK Limited, All rights reserved.
 
-use std::env;
-use std::path::{Path, PathBuf};
+use std::{env, fmt, ops::Deref, path::{Path, PathBuf}};
+
+#[derive(Debug)]
+struct IncDir(PathBuf);
+
+impl fmt::Display for IncDir {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.display().fmt(f)
+    }
+}
+
+impl Deref for IncDir {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn discover_explicit() -> Option<IncDir> {
+    env::var("DICEY_PATH").map(PathBuf::from).ok().map(|dicey_path| {
+        let libdir = dicey_path.join("lib");
+
+        assert!(libdir.exists(), "DICEY_PATH does not contain a lib directory");
+
+        let incdir = dicey_path.join("include");
+
+        assert!(incdir.exists(), "DICEY_PATH does not contain an include directory");
+        
+        println!("cargo:rerun-if-env-changed=DICEY_PATH");
+        
+        println!("cargo:rustc-link-search={}", libdir.display());
+        println!("cargo:rustc-link-lib=dicey");
+        println!("cargo:rustc-link-lib=uv");
+        
+        IncDir(incdir)
+    })
+}
+
+fn discover_pkgconfig() -> Option<IncDir> {
+    pkg_config::Config::new()
+        .atleast_version("0.3.9")
+        .statik(cfg!(feature = "static"))
+        .probe("dicey")
+        .ok()
+        .map(|mut lib| {
+            println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
+            println!("cargo:rerun-if-changed=dicey.pc");
+            
+            assert!(lib.include_paths.len() == 1);
+
+            IncDir(lib.include_paths.remove(0))
+        })
+}
+
+fn is_release() -> bool {
+    env::var("PROFILE").unwrap() == "release"
+}
+
+fn build_dicey() -> Option<IncDir> {
+    let mut cmake = cmake::Config::new("src/libdicey");
+    
+    cmake
+        .define("CMAKE_BUILD_TYPE", if is_release() { "Release" } else { "Debug" })
+        .define("BUILD_SHARED_LIBS", "OFF")
+        .define("BUILD_SAMPLES", "OFF");
+
+    let install_dir = cmake.build();
+
+    let includedir = install_dir.join("include");
+    let libdir = install_dir.join("lib");
+
+    println!("cargo:rustc-link-search=native={}", libdir.display());
+
+    println!("cargo:rustc-link-lib=static=dicey");
+
+    println!("cargo:root={}", install_dir.display());
+    println!("cargo:include={}", includedir.display());
+ 
+    Some(IncDir(includedir))
+}
+
 
 fn main() {
-    let dicey_path = env::var("DICEY_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let curdir = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-            Path::new(&curdir).join("libdicey")
-        });
-
-    let libdir = dicey_path.join("lib");
-    let incdir = dicey_path.join("include");
-
-    println!("cargo:rerun-if-env-changed=DICEY_PATH");
-
-    println!("cargo:rustc-link-search={}", libdir.display());
-    println!("cargo:rustc-link-lib=dicey");
-    println!("cargo:rustc-link-lib=uv");
-
+    let incdir = discover_explicit().or_else(discover_pkgconfig).or_else(build_dicey).unwrap();
+    
     let hpath = incdir.join("dicey").join("dicey.h");
-
     let bindings = bindgen::Builder::default()
         .clang_arg(format!("-I{}", incdir.display()))
         .header(hpath.to_string_lossy())
@@ -34,55 +98,4 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
-}
-
-pub fn build_zlib_ng(target: &str, compat: bool) {
-    let mut cmake = cmake::Config::new("src/zlib-ng");
-    
-    cmake
-        .define("BUILD_SHARED_LIBS", "OFF")
-        .define("ZLIB_COMPAT", if compat { "ON" } else { "OFF" })
-        .define("ZLIB_ENABLE_TESTS", "OFF")
-        .define("WITH_GZFILEOP", "ON");
-
-    let install_dir = cmake.build();
-
-    let includedir = install_dir.join("include");
-    let libdir = install_dir.join("lib");
-    let libdir64 = install_dir.join("lib64");
-
-    println!(
-        "cargo:rustc-link-search=native={}",
-        libdir.to_str().unwrap()
-    );
-
-    println!(
-        "cargo:rustc-link-search=native={}",
-        libdir64.to_str().unwrap()
-    );
-
-    let mut debug_suffix = "";
-
-    let libname = if target.contains("windows") && target.contains("msvc") {
-        if env::var("OPT_LEVEL").unwrap() == "0" {
-            debug_suffix = "d";
-        }
-        "zlibstatic"
-    } else {
-        "z"
-    };
-
-    println!(
-        "cargo:rustc-link-lib=static={}{}{}",
-        libname,
-        if compat { "" } else { "-ng" },
-        debug_suffix,
-    );
-
-    println!("cargo:root={}", install_dir.to_str().unwrap());
-    println!("cargo:include={}", includedir.to_str().unwrap());
-
-    if !compat {
-        println!("cargo:rustc-cfg=zng");
-    }
 }
