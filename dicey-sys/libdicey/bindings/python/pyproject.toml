@@ -1,0 +1,20 @@
+[project]
+name = "dicey"
+version = "0.3.9"
+authors = [
+    { name = "Zuru Tech", email = "foo@zuru.com" }
+]
+description = "Dicey IPC Python bindings"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = ["inflection"]
+
+[build-system]
+requires = ["setuptools>=61.0", "cython>=3.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["dicey"]
