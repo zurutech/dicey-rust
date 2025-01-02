@@ -37,6 +37,42 @@ impl Deref for IncDir {
     }
 }
 
+fn build_dicey() -> Option<IncDir> {
+    let mut cmake = cmake::Config::new("libdicey");
+
+    cmake
+        .define(
+            "CMAKE_BUILD_TYPE",
+            if is_release() { "Release" } else { "Debug" },
+        )
+        .define("BUILD_SHARED_LIBS", "OFF")
+        .define("BUILD_SAMPLES", "OFF");
+
+    let install_dir = cmake.build();
+
+    let includedir = install_dir.join("include");
+    let libdir = install_dir.join("lib");
+
+    println!("cargo:rustc-link-search=native={}", libdir.display());
+
+    println!("cargo:rustc-link-lib=static=dicey");
+
+    if !discover_uv() {
+        // use libuv from our build
+        println!("cargo:rustc-link-lib=static=uv");
+    }
+
+    if !discover_xml2() {
+        // use libxml2 from our build
+        println!("cargo:rustc-link-lib=static=xml2");
+    }
+
+    println!("cargo:root={}", install_dir.display());
+    println!("cargo:include={}", includedir.display());
+
+    Some(IncDir(includedir))
+}
+
 fn discover_explicit() -> Option<IncDir> {
     env::var("DICEY_PATH")
         .map(PathBuf::from)
@@ -66,7 +102,7 @@ fn discover_explicit() -> Option<IncDir> {
         })
 }
 
-fn discover_pkgconfig() -> Option<IncDir> {
+fn discover_dicey() -> Option<IncDir> {
     pkg_config::Config::new()
         .atleast_version("0.3.9")
         .statik(cfg!(feature = "static"))
@@ -82,39 +118,33 @@ fn discover_pkgconfig() -> Option<IncDir> {
         })
 }
 
+fn discover_uv() -> bool {
+    pkg_config::Config::new()
+        .probe("libuv")
+        .map(|_| {
+            println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
+            println!("cargo:rerun-if-changed=libuv.pc");
+        })
+        .is_ok()
+}
+
+fn discover_xml2() -> bool {
+    pkg_config::Config::new()
+        .probe("libxml-2.0")
+        .map(|_| {
+            println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
+            println!("cargo:rerun-if-changed=libxml-2.0.pc");
+        })
+        .is_ok()
+}
+
 fn is_release() -> bool {
     env::var("PROFILE").unwrap() == "release"
 }
 
-fn build_dicey() -> Option<IncDir> {
-    let mut cmake = cmake::Config::new("src/libdicey");
-
-    cmake
-        .define(
-            "CMAKE_BUILD_TYPE",
-            if is_release() { "Release" } else { "Debug" },
-        )
-        .define("BUILD_SHARED_LIBS", "OFF")
-        .define("BUILD_SAMPLES", "OFF");
-
-    let install_dir = cmake.build();
-
-    let includedir = install_dir.join("include");
-    let libdir = install_dir.join("lib");
-
-    println!("cargo:rustc-link-search=native={}", libdir.display());
-
-    println!("cargo:rustc-link-lib=static=dicey");
-
-    println!("cargo:root={}", install_dir.display());
-    println!("cargo:include={}", includedir.display());
-
-    Some(IncDir(includedir))
-}
-
 fn main() {
     let incdir = discover_explicit()
-        .or_else(discover_pkgconfig)
+        .or_else(discover_dicey)
         .or_else(build_dicey)
         .unwrap();
 
