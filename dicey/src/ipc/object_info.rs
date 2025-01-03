@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 
 use dicey_sys::{
-    dicey_element_type_DICEY_ELEMENT_TYPE_OPERATION,
+    dicey_element_type, dicey_element_type_DICEY_ELEMENT_TYPE_OPERATION,
     dicey_element_type_DICEY_ELEMENT_TYPE_PROPERTY, dicey_element_type_DICEY_ELEMENT_TYPE_SIGNAL,
 };
 
@@ -134,7 +134,7 @@ impl<'a> FromDicey<'a> for Traits {
                     _ => return Err(crate::Error::ValueTypeMismatch),
                 };
 
-                let element = match kind.0 as u32 {
+                let element = match kind.0 as dicey_element_type {
                     dicey_element_type_DICEY_ELEMENT_TYPE_OPERATION => Element::Operation(Operation { signature: sig.to_string() }),
                     dicey_element_type_DICEY_ELEMENT_TYPE_PROPERTY => Element::Property(Property {
                         signature: sig.to_string(),

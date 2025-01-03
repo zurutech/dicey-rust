@@ -34,11 +34,11 @@ use std::{
 use paste::paste;
 
 use dicey_sys::{
-    dicey_bye, dicey_bye_reason_DICEY_BYE_REASON_ERROR, dicey_bye_reason_DICEY_BYE_REASON_SHUTDOWN,
+    dicey_bye, dicey_bye_reason, dicey_bye_reason_DICEY_BYE_REASON_ERROR, dicey_bye_reason_DICEY_BYE_REASON_SHUTDOWN,
     dicey_hello, dicey_message, dicey_op, dicey_op_DICEY_OP_EVENT, dicey_op_DICEY_OP_EXEC,
     dicey_op_DICEY_OP_GET, dicey_op_DICEY_OP_RESPONSE, dicey_op_DICEY_OP_SET, dicey_packet,
     dicey_packet_as_bye, dicey_packet_as_hello, dicey_packet_as_message, dicey_packet_deinit,
-    dicey_packet_get_kind, dicey_packet_get_seq, dicey_packet_is_valid,
+    dicey_packet_get_kind, dicey_packet_get_seq, dicey_packet_kind, dicey_packet_is_valid,
     dicey_packet_kind_DICEY_PACKET_KIND_BYE, dicey_packet_kind_DICEY_PACKET_KIND_HELLO,
     dicey_packet_kind_DICEY_PACKET_KIND_MESSAGE, dicey_packet_load, dicey_version,
 };
@@ -150,10 +150,10 @@ pub enum ByeReason {
     Error = dicey_bye_reason_DICEY_BYE_REASON_ERROR as u8,
 }
 
-impl TryFrom<u32> for ByeReason {
+impl TryFrom<dicey_bye_reason> for ByeReason {
     type Error = Error;
 
-    fn try_from(value: u32) -> Result<Self, Error> {
+    fn try_from(value: dicey_bye_reason) -> Result<Self, Error> {
         match value {
             dicey_bye_reason_DICEY_BYE_REASON_SHUTDOWN => Ok(ByeReason::Shutdown),
             dicey_bye_reason_DICEY_BYE_REASON_ERROR => Ok(ByeReason::Error),
@@ -493,7 +493,7 @@ struct RawMessage {
 }
 
 impl RawMessage {
-    const fn op(&self) -> u32 {
+    const fn op(&self) -> dicey_op {
         self.c_data.type_
     }
 
@@ -597,7 +597,7 @@ impl RawPacket {
         seq
     }
 
-    fn op(&self) -> u32 {
+    fn op(&self) -> dicey_packet_kind {
         unsafe { dicey_packet_get_kind(self.content) }
     }
 }

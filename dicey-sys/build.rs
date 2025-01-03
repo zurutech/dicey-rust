@@ -41,10 +41,7 @@ fn build_dicey() -> Option<IncDir> {
     let mut cmake = cmake::Config::new("libdicey");
 
     cmake
-        .define(
-            "CMAKE_BUILD_TYPE",
-            if is_release() { "Release" } else { "Debug" },
-        )
+        .profile(cmake_build_type())
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("BUILD_SAMPLES", "OFF");
 
@@ -59,18 +56,34 @@ fn build_dicey() -> Option<IncDir> {
 
     if !discover_uv() {
         // use libuv from our build
-        println!("cargo:rustc-link-lib=static=uv");
+        println!("cargo:rustc-link-lib=static={}", if cfg!(windows) {
+            "libuv"
+        } else {
+            "uv"
+        });
     }
 
     if !discover_xml2() {
         // use libxml2 from our build
-        println!("cargo:rustc-link-lib=static=xml2");
+        println!("cargo:rustc-link-lib=static={}", if cfg!(windows) {
+           "libxml2s"
+        } else {
+            "xml2"
+        });
     }
 
     println!("cargo:root={}", install_dir.display());
     println!("cargo:include={}", includedir.display());
 
     Some(IncDir(includedir))
+}
+
+fn cmake_build_type() -> &'static str {
+    match (cfg!(windows), is_release()) {
+        (_, true) => "Release",
+        (true, false) => "RelWithDebInfo",
+        _ => "Debug",
+    } 
 }
 
 fn discover_explicit() -> Option<IncDir> {
@@ -141,6 +154,7 @@ fn discover_xml2() -> bool {
 fn is_release() -> bool {
     env::var("PROFILE").unwrap() == "release"
 }
+
 
 fn main() {
     let incdir = discover_explicit()
