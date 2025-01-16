@@ -34,11 +34,12 @@ use std::{
 use paste::paste;
 
 use dicey_sys::{
-    dicey_bye, dicey_bye_reason, dicey_bye_reason_DICEY_BYE_REASON_ERROR, dicey_bye_reason_DICEY_BYE_REASON_SHUTDOWN,
-    dicey_hello, dicey_message, dicey_op, dicey_op_DICEY_OP_EVENT, dicey_op_DICEY_OP_EXEC,
-    dicey_op_DICEY_OP_GET, dicey_op_DICEY_OP_RESPONSE, dicey_op_DICEY_OP_SET, dicey_packet,
-    dicey_packet_as_bye, dicey_packet_as_hello, dicey_packet_as_message, dicey_packet_deinit,
-    dicey_packet_get_kind, dicey_packet_get_seq, dicey_packet_kind, dicey_packet_is_valid,
+    dicey_bye, dicey_bye_reason, dicey_bye_reason_DICEY_BYE_REASON_ERROR,
+    dicey_bye_reason_DICEY_BYE_REASON_SHUTDOWN, dicey_hello, dicey_message, dicey_op,
+    dicey_op_DICEY_OP_EXEC, dicey_op_DICEY_OP_GET, dicey_op_DICEY_OP_RESPONSE,
+    dicey_op_DICEY_OP_SET, dicey_op_DICEY_OP_SIGNAL, dicey_packet, dicey_packet_as_bye,
+    dicey_packet_as_hello, dicey_packet_as_message, dicey_packet_deinit, dicey_packet_get_kind,
+    dicey_packet_get_seq, dicey_packet_is_valid, dicey_packet_kind,
     dicey_packet_kind_DICEY_PACKET_KIND_BYE, dicey_packet_kind_DICEY_PACKET_KIND_HELLO,
     dicey_packet_kind_DICEY_PACKET_KIND_MESSAGE, dicey_packet_load, dicey_version,
 };
@@ -371,7 +372,7 @@ impl TryFrom<RawMessage> for Message {
 
     fn try_from(rmessage: RawMessage) -> Result<Self, Self::Error> {
         match rmessage.op() {
-            dicey_op_DICEY_OP_EVENT => Ok(Message::Event(Event(rmessage))),
+            dicey_op_DICEY_OP_SIGNAL => Ok(Message::Event(Event(rmessage))),
             dicey_op_DICEY_OP_EXEC => Ok(Message::Exec(Exec(rmessage))),
             dicey_op_DICEY_OP_GET => Ok(Message::Get(Get(rmessage))),
             dicey_op_DICEY_OP_RESPONSE => Ok(Message::Response(Response(rmessage))),
@@ -402,7 +403,7 @@ pub enum Op {
 impl Op {
     pub(crate) const fn as_c(self) -> dicey_op {
         match self {
-            Op::Event => dicey_op_DICEY_OP_EVENT,
+            Op::Event => dicey_op_DICEY_OP_SIGNAL,
             Op::Exec => dicey_op_DICEY_OP_EXEC,
             Op::Get => dicey_op_DICEY_OP_GET,
             Op::Response => dicey_op_DICEY_OP_RESPONSE,
@@ -499,7 +500,7 @@ impl RawMessage {
 
     const fn op_name(&self) -> &'static str {
         match self.op() {
-            dicey_op_DICEY_OP_EVENT => "Event",
+            dicey_op_DICEY_OP_SIGNAL => "Event",
             dicey_op_DICEY_OP_EXEC => "Exec",
             dicey_op_DICEY_OP_GET => "Get",
             dicey_op_DICEY_OP_RESPONSE => "Response",
