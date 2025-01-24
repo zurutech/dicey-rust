@@ -79,7 +79,7 @@ impl Client {
                 &mut cln,
                 &dicey_client_args {
                     inspect_func: None,
-                    on_event: Some(client_on_event),
+                    on_signal: Some(client_on_event),
                 }
             )?;
 
