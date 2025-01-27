@@ -15,6 +15,7 @@
  */
 
 use std::{
+    borrow::Cow,
     ffi::{c_char, CStr, CString},
     mem,
 };
@@ -491,6 +492,14 @@ impl ToDicey for &'_ [u8] {
     }
 }
 
+impl ToDicey for Cow<'_, [u8]> {
+    const TYPE_KIND: Type = <str as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        self.as_ref().to_dicey(builder)
+    }
+}
+
 impl ToDicey for Vec<u8> {
     const TYPE_KIND: Type = <[u8] as ToDicey>::TYPE_KIND;
 
@@ -538,6 +547,14 @@ impl ToDicey for &'_ str {
 
     fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
         str::to_dicey(*self, builder)
+    }
+}
+
+impl ToDicey for Cow<'_, str> {
+    const TYPE_KIND: Type = <str as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        self.as_ref().to_dicey(builder)
     }
 }
 
