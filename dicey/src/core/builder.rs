@@ -483,11 +483,27 @@ impl ToDicey for [u8] {
     }
 }
 
+impl ToDicey for &'_ [u8] {
+    const TYPE_KIND: Type = <[u8] as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        <[u8]>::to_dicey(*self, builder)
+    }
+}
+
 impl ToDicey for Vec<u8> {
     const TYPE_KIND: Type = <[u8] as ToDicey>::TYPE_KIND;
 
     fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
         self.as_slice().to_dicey(builder)
+    }
+}
+
+impl ToDicey for &'_ Vec<u8> {
+    const TYPE_KIND: Type = <[u8] as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        Vec::to_dicey(*self, builder)
     }
 }
 
@@ -517,11 +533,27 @@ impl ToDicey for str {
     }
 }
 
+impl ToDicey for &'_ str {
+    const TYPE_KIND: Type = <str as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        str::to_dicey(*self, builder)
+    }
+}
+
 impl ToDicey for String {
     const TYPE_KIND: Type = <CStr as ToDicey>::TYPE_KIND;
 
     fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
         self.as_str().to_dicey(builder)
+    }
+}
+
+impl ToDicey for &'_ String {
+    const TYPE_KIND: Type = <String as ToDicey>::TYPE_KIND;
+
+    fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {
+        String::to_dicey(*self, builder)
     }
 }
 
