@@ -50,7 +50,7 @@ fn build_dicey() -> Option<IncDir> {
     let includedir = install_dir.join("include");
     let libdir = install_dir.join("lib");
 
-    println!("cargo:rustc-link-search=native={}", libdir.display());
+    println!("cargo:rustc-link-search=all={}", libdir.display());
 
     println!("cargo:rustc-link-lib=static=dicey");
 
@@ -58,7 +58,7 @@ fn build_dicey() -> Option<IncDir> {
         // use libuv from our build
         println!(
             "cargo:rustc-link-lib=static={}",
-            if cfg!(windows) { "libuv" } else { "uv" }
+            if is_windows() { "libuv" } else { "uv" }
         );
     }
 
@@ -66,7 +66,7 @@ fn build_dicey() -> Option<IncDir> {
         // use libxml2 from our build
         println!(
             "cargo:rustc-link-lib=static={}",
-            if cfg!(windows) { "libxml2s" } else { "xml2" }
+            if is_windows() { "libxml2s" } else { "xml2" }
         );
     }
 
@@ -77,7 +77,7 @@ fn build_dicey() -> Option<IncDir> {
 }
 
 fn cmake_build_type() -> &'static str {
-    match (cfg!(windows), is_release()) {
+    match (is_windows(), is_release()) {
         (_, true) => "Release",
         (true, false) => "RelWithDebInfo",
         _ => "Debug",
@@ -151,6 +151,10 @@ fn discover_xml2() -> bool {
 
 fn is_release() -> bool {
     env::var("PROFILE").unwrap() == "release"
+}
+
+fn is_windows() -> bool {
+    return env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows";
 }
 
 fn main() {
