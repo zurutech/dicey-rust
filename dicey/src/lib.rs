@@ -23,7 +23,7 @@ mod ipc;
 
 pub use self::{
     core::{
-        errors::*, Bye, FromDicey, Hello, Message, MessageBuilder, Op, Packet, Selector, ToDicey,
+        errors::*, Bye, ErrorMessage, FromDicey, Hello, Message, MessageBuilder, Op, Packet, Selector, ToDicey,
         ValueBuilder, ValueView,
     },
     ipc::{blocking, Address, Element, Elements, ObjectInfo, Operation, Property, Signal, Traits},

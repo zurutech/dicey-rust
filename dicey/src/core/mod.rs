@@ -47,7 +47,7 @@ use dicey_sys::{
 pub use self::{
     builder::{MessageBuilder, ToDicey, ValueBuilder},
     errors::Error,
-    value::{FromDicey, Selector, ValueView},
+    value::{ErrorMessage, FromDicey, Selector, ValueView},
 };
 
 use self::macros::ccall;
