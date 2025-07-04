@@ -15,7 +15,7 @@
  */
 
 use std::{
-    ffi::{c_char, CString},
+    ffi::{CString, c_char},
     mem,
     os::raw::c_void,
     pin::Pin,
@@ -23,23 +23,23 @@ use std::{
 };
 
 use dicey_sys::{
-    dicey_client, dicey_client_args, dicey_client_connect, dicey_client_delete,
-    dicey_client_disconnect, dicey_client_get_context, dicey_client_is_running, dicey_client_new,
-    dicey_client_request, dicey_client_set_context, dicey_client_subscribe_to,
-    dicey_client_unsubscribe_from, dicey_error, dicey_packet, dicey_packet_is_valid,
-    dicey_selector, DICEY_INTROSPECTION_DATA_PROP_NAME, DICEY_INTROSPECTION_TRAIT_NAME,
-    DICEY_INTROSPECTION_XML_PROP_NAME,
+    DICEY_INTROSPECTION_DATA_PROP_NAME, DICEY_INTROSPECTION_TRAIT_NAME,
+    DICEY_INTROSPECTION_XML_PROP_NAME, dicey_client, dicey_client_args, dicey_client_connect,
+    dicey_client_delete, dicey_client_disconnect, dicey_client_get_context,
+    dicey_client_is_running, dicey_client_new, dicey_client_request, dicey_client_set_context,
+    dicey_client_subscribe_to, dicey_client_unsubscribe_from, dicey_error, dicey_packet,
+    dicey_packet_is_valid, dicey_selector,
 };
 
 use crate::{
+    Error, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder, ValueView,
     core::{
         macros::ccall,
-        value::{bytes_to_cpath, FromDicey},
+        value::{FromDicey, bytes_to_cpath},
     },
-    Error, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder, ValueView,
 };
 
-use super::{address::Address, DEFAULT_TIMEOUT_MS};
+use super::{DEFAULT_TIMEOUT_MS, address::Address};
 
 pub trait EventHandler: FnMut(Message) + Send + Sync {}
 
@@ -188,10 +188,11 @@ impl<'a> Client<'a> {
             .value(argument)?
             .submit()?;
 
-        debug_assert!(msg
-            .value()
-            .and_then(|ref v| <()>::from_dicey(v).ok())
-            .is_some());
+        debug_assert!(
+            msg.value()
+                .and_then(|ref v| <()>::from_dicey(v).ok())
+                .is_some()
+        );
 
         Ok(())
     }
@@ -355,7 +356,7 @@ unsafe extern "C" fn client_on_event(
     };
 
     if let Some(cb) = state.on_event.as_mut() {
-        let message = Message::from_raw(ptr::replace(packet, mem::zeroed()))
+        let message = Message::from_raw(unsafe { ptr::replace(packet, mem::zeroed()) })
             .expect("failed to convert packet to message");
 
         cb(message);

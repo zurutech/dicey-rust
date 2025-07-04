@@ -120,34 +120,55 @@ impl<'a> FromDicey<'a> for Traits {
 
         // }
 
-        value.extract::<Vec<(&str, Vec<(&str, ValueView<'a>)>)>>()?.into_iter().map(|(tname, entries)| {
-            let entries = entries.into_iter().map(|(ename, value)| {
-                let entries = if let ValueView::Tuple(entries) = value {
-                    entries
-                } else {
-                    return Err(crate::Error::ValueTypeMismatch);
-                };
+        value
+            .extract::<Vec<(&str, Vec<(&str, ValueView<'a>)>)>>()?
+            .into_iter()
+            .map(|(tname, entries)| {
+                let entries = entries
+                    .into_iter()
+                    .map(|(ename, value)| {
+                        let entries = if let ValueView::Tuple(entries) = value {
+                            entries
+                        } else {
+                            return Err(crate::Error::ValueTypeMismatch);
+                        };
 
-                let (kind, sig, readonly) = match &entries[..] {
-                    [ValueView::Byte(kind), ValueView::String(sig), ValueView::Bool(ro)] => (kind, sig, *ro),
-                    [ValueView::Byte(kind), ValueView::String(sig)] => (kind, sig, false),
-                    _ => return Err(crate::Error::ValueTypeMismatch),
-                };
+                        let (kind, sig, readonly) = match &entries[..] {
+                            [
+                                ValueView::Byte(kind),
+                                ValueView::String(sig),
+                                ValueView::Bool(ro),
+                            ] => (kind, sig, *ro),
+                            [ValueView::Byte(kind), ValueView::String(sig)] => (kind, sig, false),
+                            _ => return Err(crate::Error::ValueTypeMismatch),
+                        };
 
-                let element = match kind.0 as dicey_element_type {
-                    dicey_element_type_DICEY_ELEMENT_TYPE_OPERATION => Element::Operation(Operation { signature: sig.to_string() }),
-                    dicey_element_type_DICEY_ELEMENT_TYPE_PROPERTY => Element::Property(Property {
-                        signature: sig.to_string(),
-                        readonly
-                    }),
-                    dicey_element_type_DICEY_ELEMENT_TYPE_SIGNAL => Element::Signal(Signal { signature: sig.to_string() }),
-                    _ => return Err(Error::BadMessage),
-                };
+                        let element = match kind.0 as dicey_element_type {
+                            dicey_element_type_DICEY_ELEMENT_TYPE_OPERATION => {
+                                Element::Operation(Operation {
+                                    signature: sig.to_string(),
+                                })
+                            }
+                            dicey_element_type_DICEY_ELEMENT_TYPE_PROPERTY => {
+                                Element::Property(Property {
+                                    signature: sig.to_string(),
+                                    readonly,
+                                })
+                            }
+                            dicey_element_type_DICEY_ELEMENT_TYPE_SIGNAL => {
+                                Element::Signal(Signal {
+                                    signature: sig.to_string(),
+                                })
+                            }
+                            _ => return Err(Error::BadMessage),
+                        };
 
-                Ok((ename.to_string(), element))
-            }).collect::<Result<_, _>>()?;
+                        Ok((ename.to_string(), element))
+                    })
+                    .collect::<Result<_, _>>()?;
 
-            Ok((tname.to_string(), Elements(entries)))
-        }).collect()
+                Ok((tname.to_string(), Elements(entries)))
+            })
+            .collect()
     }
 }

@@ -19,8 +19,8 @@ use std::error;
 use clap::Parser;
 
 use dicey::{
-    blocking::{Client, ClientArgs},
     Message,
+    blocking::{Client, ClientArgs},
 };
 use uuid::Uuid;
 

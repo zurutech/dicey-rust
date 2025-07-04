@@ -19,8 +19,8 @@ use std::{error, time::Instant};
 use clap::Parser;
 
 use dicey::{
-    blocking::{Client, ClientArgs},
     Message,
+    blocking::{Client, ClientArgs},
 };
 
 #[derive(Parser)]

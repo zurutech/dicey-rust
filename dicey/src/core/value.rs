@@ -667,16 +667,18 @@ impl<'a> FromDicey<'a> for String {
 }
 
 unsafe fn extract_list<'a>(list: dicey_list) -> Result<Vec<ValueView<'a>>, Error> {
-    let mut iter = dicey_list_iter(&list);
-
     let mut ret = Vec::new();
 
-    while dicey_iterator_has_next(iter) {
-        let mut value = mem::zeroed();
+    unsafe {
+        let mut iter = dicey_list_iter(&list);
 
-        ccall!(iterator_next, &mut iter, &mut value)?;
+        while dicey_iterator_has_next(iter) {
+            let mut value = mem::zeroed();
 
-        ret.push(ValueView::try_from(value)?);
+            ccall!(iterator_next, &mut iter, &mut value)?;
+
+            ret.push(ValueView::try_from(value)?);
+        }
     }
 
     Ok(ret)

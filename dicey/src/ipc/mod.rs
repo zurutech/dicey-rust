@@ -26,6 +26,6 @@ pub use object_info::{Element, Elements, ObjectInfo, Operation, Property, Signal
 mod client;
 
 #[cfg(feature = "async")]
-pub use client::{Client, EventSource, RequestBuilder};
+pub use client::{Client, RequestBuilder, SignalSource};
 
 pub const DEFAULT_TIMEOUT_MS: u32 = 1000u32;
