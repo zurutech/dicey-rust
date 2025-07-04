@@ -15,6 +15,7 @@
  */
 
 use std::{
+    borrow::Borrow,
     ffi::{CStr, CString},
     mem,
     ops::Deref,
@@ -148,7 +149,7 @@ pub enum ValueView<'a> {
 
     Uuid(Uuid),
 
-    Path(Path<'a>),
+    Path(&'a Path),
     Selector(Selector<'a>),
 
     Error(ErrorMessage<'a>),
@@ -340,7 +341,7 @@ impl TryFrom<dicey_value> for ValueView<'_> {
 
                     CStr::from_ptr(bytes)
                         .to_str()
-                        .map(|s| ValueView::Path(Path(s)))
+                        .map(|s| ValueView::Path(Path::new(s)))
                         .map_err(|_| Error::BadMessage)
                 }
 
@@ -406,14 +407,35 @@ impl From<dicey_errmsg> for ErrorMessage<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Path<'a>(pub &'a str);
+#[derive(Debug, Eq, PartialEq)]
+pub struct Path(str);
 
-impl Deref for Path<'_> {
+impl Path {
+    pub fn new<S: AsRef<str> + ?Sized>(s: &S) -> &Path {
+        // magic: we take the str and we magically mutate it into a Dicey Path (no verification for now, we really can't)
+        unsafe { &*(s.as_ref() as *const str as *const Path) }
+    }
+}
+
+impl AsRef<str> for Path {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Deref for Path {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.0
+        &self.0
+    }
+}
+
+impl ToOwned for Path {
+    type Owned = PathBuf;
+
+    fn to_owned(&self) -> Self::Owned {
+        PathBuf(self.0.to_owned())
     }
 }
 
@@ -421,9 +443,38 @@ pub(crate) fn bytes_to_cpath(path: impl Into<Vec<u8>>) -> Result<CString, Error>
     CString::new(path.into()).map_err(|_| Error::MalformedPath)
 }
 
-impl<'a> From<&'a str> for Path<'a> {
-    fn from(path: &'a str) -> Self {
-        Path(path)
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PathBuf(String);
+
+impl AsRef<String> for PathBuf {
+    fn as_ref(&self) -> &String {
+        &self.0
+    }
+}
+
+impl AsRef<Path> for PathBuf {
+    fn as_ref(&self) -> &Path {
+        self
+    }
+}
+
+impl Borrow<Path> for PathBuf {
+    fn borrow(&self) -> &Path {
+        self
+    }
+}
+
+impl Deref for PathBuf {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        Path::new(&self.0)
+    }
+}
+
+impl<'a> From<String> for PathBuf {
+    fn from(string: String) -> Self {
+        PathBuf(string)
     }
 }
 

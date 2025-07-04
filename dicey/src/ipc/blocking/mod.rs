@@ -15,7 +15,7 @@
  */
 
 use std::{
-    ffi::{CString, c_char},
+    ffi::{CStr, CString, c_char},
     mem,
     os::raw::c_void,
     pin::Pin,
@@ -27,7 +27,8 @@ use dicey_sys::{
     DICEY_INTROSPECTION_XML_PROP_NAME, dicey_client, dicey_client_args, dicey_client_connect,
     dicey_client_delete, dicey_client_disconnect, dicey_client_get_context,
     dicey_client_is_running, dicey_client_new, dicey_client_request, dicey_client_set_context,
-    dicey_client_subscribe_to, dicey_client_unsubscribe_from, dicey_error, dicey_packet,
+    dicey_client_subscribe_result, dicey_client_subscribe_result_deinit, dicey_client_subscribe_to,
+    dicey_client_unsubscribe_from, dicey_error, dicey_error_DICEY_OK, dicey_packet,
     dicey_packet_is_valid, dicey_selector,
 };
 
@@ -35,7 +36,7 @@ use crate::{
     Error, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder, ValueView,
     core::{
         macros::ccall,
-        value::{FromDicey, bytes_to_cpath},
+        value::{FromDicey, PathBuf, bytes_to_cpath},
     },
 };
 
@@ -201,7 +202,7 @@ impl<'a> Client<'a> {
         &self,
         path: impl Into<Vec<u8>>,
         selector: impl Into<Selector<'b>>,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<PathBuf>, Error> {
         let cpath = bytes_to_cpath(path)?;
 
         let sel = selector.into();
@@ -214,16 +215,29 @@ impl<'a> Client<'a> {
             elem: elem.as_ref().unwrap().as_ptr() as *const c_char,
         };
 
-        unsafe {
-            ccall!(
-                client_subscribe_to,
-                self.ptr(),
-                cpath.as_ptr(),
-                csel,
-                DEFAULT_TIMEOUT_MS
+        let mut result @ dicey_client_subscribe_result { err, real_path } = unsafe {
+            dicey_client_subscribe_to(self.ptr(), cpath.as_ptr(), csel, DEFAULT_TIMEOUT_MS)
+        };
+
+        let aliased_path = if real_path.is_null() {
+            None
+        } else {
+            // we assume the path is valid UTF-8, otherwise the library is broken (we only support ASCII for paths)
+            Some(
+                unsafe { CStr::from_ptr(real_path as *mut c_char) }
+                    .to_str()
+                    .unwrap()
+                    .to_owned(),
             )
+        };
+
+        unsafe { dicey_client_subscribe_result_deinit(&mut result) };
+
+        if err != dicey_error_DICEY_OK {
+            Err(Error::from(err))
+        } else {
+            Ok(aliased_path.map(|p| p.into()))
         }
-        .map(|_| ())
     }
 
     pub fn unsubscribe_from<'b>(

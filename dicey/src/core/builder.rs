@@ -604,7 +604,7 @@ impl ToDicey for CString {
     }
 }
 
-impl ToDicey for Path<'_> {
+impl ToDicey for &'_ Path {
     const TYPE_KIND: Type = Type::Path;
 
     fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {

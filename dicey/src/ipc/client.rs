@@ -308,7 +308,7 @@ impl Client {
                 trait_name: eventmanager_trait_name,
                 elem: eventmanager_subscribe_op_name,
             })?
-            .value((Path(path.as_ref()), selector.into()))?
+            .value((Path::new(path.as_ref()), selector.into()))?
             .submit()
             .await
             .and_then(|m| match m.value() {
@@ -329,7 +329,7 @@ impl Client {
                 trait_name: DICEY_EVENTMANAGER_TRAIT_NAME,
                 elem: DICEY_EVENTMANAGER_UNSUBSCRIBE_OP_NAME,
             })?
-            .value((Path(path.as_ref()), selector.into()))?
+            .value((Path::new(path.as_ref()), selector.into()))?
             .submit()
             .await
             .and_then(|m| match m.value() {
@@ -462,7 +462,7 @@ unsafe extern "C" fn client_on_event(
     ctx: *mut ::std::os::raw::c_void,
     packet: *mut dicey_packet,
 ) {
-    let state = {
+    let state = unsafe {
         assert!(!c_client.is_null() && !ctx.is_null() && dicey_packet_is_valid(*packet));
 
         &mut *(dicey_client_get_context(c_client) as *mut ClientState)
@@ -470,7 +470,7 @@ unsafe extern "C" fn client_on_event(
 
     // if there are no subscribers, we can just drop the message
     let _ = state.events.send(Arc::new(
-        Message::from_raw(ptr::replace(packet, mem::zeroed()))
+        Message::from_raw(unsafe { ptr::replace(packet, mem::zeroed()) })
             .expect("failed to convert packet to message"),
     ));
 }
