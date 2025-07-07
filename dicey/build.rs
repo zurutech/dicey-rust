@@ -31,7 +31,9 @@ unsafe fn gen_errors(mut write: impl Write) -> io::Result<()> {
     let mut defs_ptr: *const dicey_error_def = ptr::null();
     let mut count = 0usize;
 
-    dicey_error_infos(&mut defs_ptr, &mut count);
+    unsafe {
+        dicey_error_infos(&mut defs_ptr, &mut count);
+    }
 
     writeln!(
         write,
@@ -46,10 +48,10 @@ use dicey_sys::{{dicey_error, dicey_error_msg}};
         "#[derive(Clone, Copy, Debug, Eq, PartialEq)]\n#[repr(i32)]\npub enum Error {{"
     )?;
 
-    let defs = slice::from_raw_parts(defs_ptr, count);
+    let defs = unsafe { slice::from_raw_parts(defs_ptr, count) };
 
     for def in defs {
-        let name = CStr::from_ptr(def.name).to_str().unwrap(); // we assume all strings are ASCII
+        let name = unsafe { CStr::from_ptr(def.name) }.to_str().unwrap(); // we assume all strings are ASCII
         writeln!(write, "    {} = {},", name, def.errnum)?;
     }
 
@@ -86,7 +88,7 @@ impl From<dicey_error> for Error {{
     )?;
 
     for def in defs {
-        let name = CStr::from_ptr(def.name).to_str().unwrap(); // we assume all strings are ASCII
+        let name = unsafe { CStr::from_ptr(def.name) }.to_str().unwrap(); // we assume all strings are ASCII
 
         writeln!(write, "           {} => Error::{},", def.errnum, name)?;
     }

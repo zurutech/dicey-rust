@@ -23,11 +23,11 @@ mod ipc;
 
 pub use self::{
     core::{
-        errors::*, Bye, ErrorMessage, FromDicey, Hello, Message, MessageBuilder, Op, Packet, Selector, ToDicey,
-        ValueBuilder, ValueView,
+        Bye, ErrorMessage, FromDicey, Hello, Message, MessageBuilder, Op, Packet, Selector,
+        ToDicey, ValueBuilder, ValueView, errors::*,
     },
-    ipc::{blocking, Address, Element, Elements, ObjectInfo, Operation, Property, Signal, Traits},
+    ipc::{Address, Element, Elements, ObjectInfo, Operation, Property, Signal, Traits, blocking},
 };
 
 #[cfg(feature = "async")]
-pub use self::ipc::{Client, EventSource, RequestBuilder};
+pub use self::ipc::{Client, RequestBuilder, SignalSource};

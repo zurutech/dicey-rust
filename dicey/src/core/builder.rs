@@ -16,7 +16,7 @@
 
 use std::{
     borrow::Cow,
-    ffi::{c_char, CStr, CString},
+    ffi::{CStr, CString, c_char},
     mem,
 };
 
@@ -33,9 +33,9 @@ use dicey_sys::{
 };
 
 use super::{
-    macros::ccall,
-    value::{bytes_to_cpath, Byte, ErrorMessage, Path, Type},
     Error, Message, Op, RawPacket, Selector,
+    macros::ccall,
+    value::{Byte, ErrorMessage, Path, Type, bytes_to_cpath},
 };
 
 pub struct MessageBuilder {
@@ -604,7 +604,7 @@ impl ToDicey for CString {
     }
 }
 
-impl ToDicey for Path<'_> {
+impl ToDicey for &'_ Path {
     const TYPE_KIND: Type = Type::Path;
 
     fn to_dicey(&self, builder: &mut ValueBuilder) -> Result<(), Error> {

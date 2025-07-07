@@ -15,7 +15,7 @@
  */
 
 use std::{
-    ffi::{c_char, CString},
+    ffi::{CStr, CString, c_char},
     mem,
     os::raw::c_void,
     pin::Pin,
@@ -23,23 +23,24 @@ use std::{
 };
 
 use dicey_sys::{
-    dicey_client, dicey_client_args, dicey_client_connect, dicey_client_delete,
-    dicey_client_disconnect, dicey_client_get_context, dicey_client_is_running, dicey_client_new,
-    dicey_client_request, dicey_client_set_context, dicey_client_subscribe_to,
-    dicey_client_unsubscribe_from, dicey_error, dicey_packet, dicey_packet_is_valid,
-    dicey_selector, DICEY_INTROSPECTION_DATA_PROP_NAME, DICEY_INTROSPECTION_TRAIT_NAME,
-    DICEY_INTROSPECTION_XML_PROP_NAME,
+    DICEY_INTROSPECTION_DATA_PROP_NAME, DICEY_INTROSPECTION_TRAIT_NAME,
+    DICEY_INTROSPECTION_XML_PROP_NAME, dicey_client, dicey_client_args, dicey_client_connect,
+    dicey_client_delete, dicey_client_disconnect, dicey_client_get_context,
+    dicey_client_is_running, dicey_client_new, dicey_client_request, dicey_client_set_context,
+    dicey_client_subscribe_result, dicey_client_subscribe_result_deinit, dicey_client_subscribe_to,
+    dicey_client_unsubscribe_from, dicey_error, dicey_error_DICEY_OK, dicey_packet,
+    dicey_packet_is_valid, dicey_selector,
 };
 
 use crate::{
+    Error, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder, ValueView,
     core::{
         macros::ccall,
-        value::{bytes_to_cpath, FromDicey},
+        value::{FromDicey, PathBuf, bytes_to_cpath},
     },
-    Error, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder, ValueView,
 };
 
-use super::{address::Address, DEFAULT_TIMEOUT_MS};
+use super::{DEFAULT_TIMEOUT_MS, address::Address};
 
 pub trait EventHandler: FnMut(Message) + Send + Sync {}
 
@@ -188,10 +189,11 @@ impl<'a> Client<'a> {
             .value(argument)?
             .submit()?;
 
-        debug_assert!(msg
-            .value()
-            .and_then(|ref v| <()>::from_dicey(v).ok())
-            .is_some());
+        debug_assert!(
+            msg.value()
+                .and_then(|ref v| <()>::from_dicey(v).ok())
+                .is_some()
+        );
 
         Ok(())
     }
@@ -200,7 +202,7 @@ impl<'a> Client<'a> {
         &self,
         path: impl Into<Vec<u8>>,
         selector: impl Into<Selector<'b>>,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<PathBuf>, Error> {
         let cpath = bytes_to_cpath(path)?;
 
         let sel = selector.into();
@@ -213,16 +215,29 @@ impl<'a> Client<'a> {
             elem: elem.as_ref().unwrap().as_ptr() as *const c_char,
         };
 
-        unsafe {
-            ccall!(
-                client_subscribe_to,
-                self.ptr(),
-                cpath.as_ptr(),
-                csel,
-                DEFAULT_TIMEOUT_MS
+        let mut result @ dicey_client_subscribe_result { err, real_path } = unsafe {
+            dicey_client_subscribe_to(self.ptr(), cpath.as_ptr(), csel, DEFAULT_TIMEOUT_MS)
+        };
+
+        let aliased_path = if real_path.is_null() {
+            None
+        } else {
+            // we assume the path is valid UTF-8, otherwise the library is broken (we only support ASCII for paths)
+            Some(
+                unsafe { CStr::from_ptr(real_path as *mut c_char) }
+                    .to_str()
+                    .unwrap()
+                    .to_owned(),
             )
+        };
+
+        unsafe { dicey_client_subscribe_result_deinit(&mut result) };
+
+        if err != dicey_error_DICEY_OK {
+            Err(Error::from(err))
+        } else {
+            Ok(aliased_path.map(|p| p.into()))
         }
-        .map(|_| ())
     }
 
     pub fn unsubscribe_from<'b>(
@@ -355,7 +370,7 @@ unsafe extern "C" fn client_on_event(
     };
 
     if let Some(cb) = state.on_event.as_mut() {
-        let message = Message::from_raw(ptr::replace(packet, mem::zeroed()))
+        let message = Message::from_raw(unsafe { ptr::replace(packet, mem::zeroed()) })
             .expect("failed to convert packet to message");
 
         cb(message);

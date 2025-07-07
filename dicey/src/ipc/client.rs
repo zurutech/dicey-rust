@@ -24,20 +24,21 @@ use std::{
 };
 
 use crate::{
-    core::{macros::ccall, value::Path},
     Error, FromDicey, Message, MessageBuilder, ObjectInfo, Op, Selector, ToDicey, ValueBuilder,
     ValueView,
+    core::{macros::ccall, value::Path},
 };
 
-use super::{address::Address, DEFAULT_TIMEOUT_MS};
+use super::{DEFAULT_TIMEOUT_MS, address::Address};
 
 use dicey_sys::{
+    DICEY_EVENTMANAGER_SUBSCRIBE_OP_NAME, DICEY_EVENTMANAGER_TRAIT_NAME,
+    DICEY_EVENTMANAGER_UNSUBSCRIBE_OP_NAME, DICEY_INTROSPECTION_DATA_PROP_NAME,
+    DICEY_INTROSPECTION_TRAIT_NAME, DICEY_INTROSPECTION_XML_PROP_NAME, DICEY_SERVER_PATH,
     dicey_client, dicey_client_args, dicey_client_connect_async, dicey_client_delete,
     dicey_client_disconnect, dicey_client_get_context, dicey_client_is_running, dicey_client_new,
     dicey_client_request_async, dicey_client_set_context, dicey_error, dicey_packet,
-    dicey_packet_is_valid, DICEY_EVENTMANAGER_SUBSCRIBE_OP_NAME, DICEY_EVENTMANAGER_TRAIT_NAME,
-    DICEY_EVENTMANAGER_UNSUBSCRIBE_OP_NAME, DICEY_INTROSPECTION_DATA_PROP_NAME,
-    DICEY_INTROSPECTION_TRAIT_NAME, DICEY_INTROSPECTION_XML_PROP_NAME, DICEY_SERVER_PATH,
+    dicey_packet_is_valid,
 };
 
 use futures::channel::oneshot;
@@ -142,9 +143,9 @@ impl Client {
             .map(|_| client)
     }
 
-    pub fn events(&self) -> EventSource {
-        EventSource {
-            events: self.state.events.subscribe(),
+    pub fn events(&self) -> SignalSource {
+        SignalSource {
+            signals: self.state.events.subscribe(),
         }
     }
 
@@ -279,10 +280,11 @@ impl Client {
             .submit()
             .await?;
 
-        debug_assert!(msg
-            .value()
-            .and_then(|ref v| <()>::from_dicey(v).ok())
-            .is_some());
+        debug_assert!(
+            msg.value()
+                .and_then(|ref v| <()>::from_dicey(v).ok())
+                .is_some()
+        );
 
         Ok(())
     }
@@ -306,7 +308,7 @@ impl Client {
                 trait_name: eventmanager_trait_name,
                 elem: eventmanager_subscribe_op_name,
             })?
-            .value((Path(path.as_ref()), selector.into()))?
+            .value((Path::new(path.as_ref()), selector.into()))?
             .submit()
             .await
             .and_then(|m| match m.value() {
@@ -327,7 +329,7 @@ impl Client {
                 trait_name: DICEY_EVENTMANAGER_TRAIT_NAME,
                 elem: DICEY_EVENTMANAGER_UNSUBSCRIBE_OP_NAME,
             })?
-            .value((Path(path.as_ref()), selector.into()))?
+            .value((Path::new(path.as_ref()), selector.into()))?
             .submit()
             .await
             .and_then(|m| match m.value() {
@@ -353,13 +355,13 @@ impl Drop for Client {
     }
 }
 
-pub struct EventSource {
-    events: Receiver<Arc<Message>>,
+pub struct SignalSource {
+    signals: Receiver<Arc<Message>>,
 }
 
-impl EventSource {
+impl SignalSource {
     pub async fn next(&mut self) -> Result<Arc<Message>, Error> {
-        self.events.recv().await.map_err(|e| {
+        self.signals.recv().await.map_err(|e| {
             use tokio::sync::broadcast::error::RecvError::*;
 
             match e {
@@ -372,7 +374,7 @@ impl EventSource {
     pub fn poll(&mut self) -> Result<Arc<Message>, Error> {
         use tokio::sync::broadcast::error::TryRecvError::*;
 
-        match self.events.try_recv() {
+        match self.signals.try_recv() {
             Ok(msg) => Ok(msg),
             Err(Empty) => Err(Error::TryAgain),
             Err(Closed) => Err(Error::Cancelled),
@@ -460,7 +462,7 @@ unsafe extern "C" fn client_on_event(
     ctx: *mut ::std::os::raw::c_void,
     packet: *mut dicey_packet,
 ) {
-    let state = {
+    let state = unsafe {
         assert!(!c_client.is_null() && !ctx.is_null() && dicey_packet_is_valid(*packet));
 
         &mut *(dicey_client_get_context(c_client) as *mut ClientState)
@@ -468,7 +470,7 @@ unsafe extern "C" fn client_on_event(
 
     // if there are no subscribers, we can just drop the message
     let _ = state.events.send(Arc::new(
-        Message::from_raw(ptr::replace(packet, mem::zeroed()))
+        Message::from_raw(unsafe { ptr::replace(packet, mem::zeroed()) })
             .expect("failed to convert packet to message"),
     ));
 }

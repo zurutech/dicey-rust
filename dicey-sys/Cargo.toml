@@ -1,12 +1,12 @@
 [package]
 name = "dicey-sys"
-version = "0.5.0"
-edition = "2021"
+version = "0.6.0"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-bindgen = "0.71.1"
+bindgen = "0.72.0"
 cmake = "0.1.52"
 pkg-config = "0.3.31"
 

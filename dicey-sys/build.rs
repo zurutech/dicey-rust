@@ -154,7 +154,7 @@ fn is_release() -> bool {
 }
 
 fn is_windows() -> bool {
-    return env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows";
+    env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows"
 }
 
 fn main() {
