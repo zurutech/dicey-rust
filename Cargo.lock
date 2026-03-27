@@ -204,7 +204,7 @@ checksum = "0b6a852b24ab71dffc585bcb46eaf7959d175cb865a7152e35b348d1b2960422"
 
 [[package]]
 name = "dicey"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "clap",
  "dicey",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "dicey-sys"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "bindgen",
  "cmake",
