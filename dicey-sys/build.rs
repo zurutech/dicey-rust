@@ -45,6 +45,11 @@ fn build_dicey() -> Option<IncDir> {
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("BUILD_SAMPLES", "OFF");
 
+    // hack: macos has a tendency to pick the wrong libxml2, so we force it to use our build
+    if is_macos() {
+        cmake.define("USE_VENDORED_LIBS", "ON");
+    }
+
     let install_dir = cmake.build();
 
     let includedir = install_dir.join("include");
@@ -140,6 +145,7 @@ fn discover_uv() -> bool {
 }
 
 fn discover_xml2() -> bool {
+    // macos keeps picking the wrong 
     pkg_config::Config::new()
         .probe("libxml-2.0")
         .map(|_| {
@@ -151,6 +157,10 @@ fn discover_xml2() -> bool {
 
 fn is_release() -> bool {
     env::var("PROFILE").unwrap() == "release"
+}
+
+fn is_macos() -> bool {
+    env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos"
 }
 
 fn is_windows() -> bool {
