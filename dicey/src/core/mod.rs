@@ -31,7 +31,6 @@ use std::{
     path::Path,
 };
 
-use paste::paste;
 
 use dicey_sys::{
     dicey_bye, dicey_bye_reason, dicey_bye_reason_DICEY_BYE_REASON_ERROR,
@@ -174,11 +173,11 @@ impl Event {
         self.0.path()
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         self.0.selector()
     }
 
-    pub fn value(&self) -> ValueView {
+    pub fn value(&self) -> ValueView<'_> {
         self.0.value()
     }
 
@@ -204,11 +203,11 @@ impl Exec {
         self.0.path()
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         self.0.selector()
     }
 
-    pub fn value(&self) -> ValueView {
+    pub fn value(&self) -> ValueView<'_> {
         self.0.value()
     }
 
@@ -234,7 +233,7 @@ impl Get {
         self.0.path()
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         self.0.selector()
     }
 
@@ -322,7 +321,7 @@ impl Message {
         }
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         match self {
             Message::Event(e) => e.selector(),
             Message::Exec(e) => e.selector(),
@@ -342,7 +341,7 @@ impl Message {
         }
     }
 
-    pub fn value(&self) -> Option<ValueView> {
+    pub fn value(&self) -> Option<ValueView<'_>> {
         match self {
             Message::Event(e) => Some(e.value()),
             Message::Exec(e) => Some(e.value()),
@@ -423,11 +422,11 @@ impl Response {
         self.0.path()
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         self.0.selector()
     }
 
-    pub fn value(&self) -> ValueView {
+    pub fn value(&self) -> ValueView<'_> {
         self.0.value()
     }
 
@@ -453,11 +452,11 @@ impl Set {
         self.0.path()
     }
 
-    pub fn selector(&self) -> Selector {
+    pub fn selector(&self) -> Selector<'_> {
         self.0.selector()
     }
 
-    pub fn value(&self) -> ValueView {
+    pub fn value(&self) -> ValueView<'_> {
         self.0.value()
     }
 
@@ -529,7 +528,7 @@ impl RawMessage {
             .expect("the path must be ASCII")
     }
 
-    fn selector(&self) -> Selector {
+    fn selector(&self) -> Selector<'_> {
         Selector::from(self.c_data.selector)
     }
 
@@ -537,7 +536,7 @@ impl RawMessage {
         self.rpacket.seq()
     }
 
-    fn value(&self) -> ValueView {
+    fn value(&self) -> ValueView<'_> {
         ValueView::try_from(self.c_data.value)
             .expect("the value must be valid, this is probably a C bug")
     }

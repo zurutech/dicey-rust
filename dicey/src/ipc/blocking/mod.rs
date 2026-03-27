@@ -156,7 +156,7 @@ impl<'a> Client<'a> {
         !self.ptr().is_null() && unsafe { dicey_client_is_running(self.ptr()) }
     }
 
-    pub fn request(&self, op: Op) -> RequestBuilder {
+    pub fn request(&self, op: Op) -> RequestBuilder<'_> {
         RequestBuilder::new(self, op)
     }
 
